@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#23211C">
+<title>FRONTLINE II — Supply &amp; Combined Arms</title>
+<style>
+  :root{
+    --board:#D5CFB6; --field:#B4BC96; --water:#8FA6AB; --woods:#9AAB80;
+    --ink:#23211C; --rule:#8E8974; --paper:#E4DFC9;
+    --label:"Helvetica Neue",Helvetica,Arial,sans-serif;
+    --data:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;overflow:hidden;background:var(--ink);}
+  body{font-family:var(--label);touch-action:none;-webkit-user-select:none;user-select:none;}
+  #wrap{position:relative;width:100%;height:100%;}
+  canvas{display:block;width:100%;height:100%;touch-action:none;}
+
+  .screen{position:absolute;inset:0;z-index:10;display:none;flex-direction:column;
+    align-items:center;justify-content:center;
+    padding:30px 24px calc(30px + env(safe-area-inset-bottom));
+    background:var(--paper);color:var(--ink);}
+  .screen.on{display:flex;}
+  .stamp{font-family:var(--data);font-size:10px;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--rule);margin-bottom:14px;}
+  h1{font-size:clamp(32px,10.5vw,54px);font-weight:800;letter-spacing:.10em;line-height:.92;
+    text-align:center;text-transform:uppercase;}
+  .sub{font-family:var(--data);font-size:11px;letter-spacing:.14em;color:var(--rule);
+    margin-top:12px;text-align:center;text-transform:uppercase;}
+  .rule{width:min(420px,86%);height:2px;background:var(--ink);margin:20px 0;opacity:.85;}
+  .ops{width:min(420px,92%);display:flex;flex-direction:column;gap:10px;}
+  .op{display:flex;border:2px solid var(--ink);background:transparent;color:var(--ink);
+    text-align:left;cursor:pointer;font-family:var(--label);}
+  .op:active{background:var(--ink);color:var(--paper);}
+  .op:active .opn{background:var(--paper);color:var(--ink);}
+  .op:active .opd{color:var(--paper);opacity:.75;}
+  .opn{font-family:var(--data);font-size:15px;font-weight:700;background:var(--ink);
+    color:var(--paper);padding:14px 12px;display:flex;align-items:center;}
+  .opb{padding:11px 13px;flex:1;}
+  .opt{font-size:15px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;}
+  .opd{font-family:var(--data);font-size:10.5px;color:var(--rule);margin-top:3px;letter-spacing:.04em;}
+  .btn{font-family:var(--label);font-size:14px;font-weight:700;letter-spacing:.14em;
+    text-transform:uppercase;padding:14px 30px;border:2px solid var(--ink);
+    background:var(--ink);color:var(--paper);cursor:pointer;}
+  .btn.ghost{background:transparent;color:var(--ink);}
+  .btn:active{opacity:.72;}
+  .row{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;justify-content:center;}
+
+  #brief{overflow-y:auto;-webkit-overflow-scrolling:touch;justify-content:flex-start;
+    padding-top:calc(26px + env(safe-area-inset-top));}
+  .sheet{width:min(460px,100%);}
+  .sec{font-family:var(--data);font-size:10px;letter-spacing:.2em;color:var(--rule);
+    text-transform:uppercase;border-bottom:1px solid var(--rule);padding-bottom:5px;margin:22px 0 10px;}
+  .ln{display:flex;gap:12px;font-size:13.5px;line-height:1.45;margin-bottom:9px;}
+  .ln b{font-family:var(--data);font-size:11.5px;letter-spacing:.06em;min-width:78px;
+    flex-shrink:0;padding-top:2px;}
+  .tri{font-family:var(--data);font-size:12px;line-height:1.9;letter-spacing:.03em;}
+
+  #hud{position:absolute;left:0;right:0;top:0;z-index:5;
+    padding:calc(8px + env(safe-area-inset-top)) 12px 8px;
+    display:flex;align-items:center;gap:10px;pointer-events:none;}
+  #bar{flex:1;height:16px;border:1.5px solid var(--ink);display:flex;
+    background:#7C7768;overflow:hidden;}
+  #bar div{height:100%;transition:width .35s ease;}
+  .hbtn{pointer-events:auto;font-family:var(--data);font-size:11px;font-weight:700;
+    letter-spacing:.1em;padding:5px 9px;border:1.5px solid var(--ink);
+    background:var(--paper);color:var(--ink);cursor:pointer;}
+  .hbtn:active{background:var(--ink);color:var(--paper);}
+
+  #panel{position:absolute;left:8px;right:8px;z-index:5;
+    bottom:calc(8px + env(safe-area-inset-bottom));
+    border:2px solid var(--ink);background:var(--paper);
+    padding:7px 10px 8px;pointer-events:none;display:none;}
+  #panel.on{display:block;}
+  #ptop{display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+    border-bottom:1px solid var(--rule);padding-bottom:5px;margin-bottom:6px;}
+  #pname{font-size:12.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;}
+  #pstat{font-family:var(--data);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--rule);text-align:right;}
+  #parms{display:flex;gap:14px;align-items:center;}
+  .arm{display:flex;align-items:center;gap:6px;flex:1;}
+  .arm canvas{display:block;}
+  .arml{font-family:var(--data);font-size:9px;letter-spacing:.09em;color:var(--rule);line-height:1.25;}
+  .armv{font-family:var(--data);font-size:14px;font-weight:700;color:var(--ink);line-height:1;}
+  .dim{opacity:.32;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv"></canvas>
+
+  <div id="hud">
+    <button class="hbtn" id="menu">‖</button>
+    <div id="bar"></div>
+    <button class="hbtn" id="order">½</button>
+  </div>
+
+  <div id="panel">
+    <div id="ptop"><div id="pname">Arms of service</div><div id="pstat">Tap a sector</div></div>
+    <div id="parms"></div>
+  </div>
+
+  <div class="screen on" id="title">
+    <div class="stamp">Series 1 · Hex &amp; Counter</div>
+    <h1>Front<br>line</h1>
+    <div class="sub">Combined Arms &amp; Supply · 1944</div>
+    <div class="rule"></div>
+    <div class="ops" id="oplist"></div>
+    <div class="row" style="margin-top:18px;">
+      <button class="btn ghost" id="rules">Read the rules</button>
+    </div>
+  </div>
+
+  <div class="screen" id="brief">
+    <div class="sheet">
+      <div class="stamp">Rulebook · revised</div>
+      <h1 style="font-size:29px;text-align:left;">Standing<br>Orders</h1>
+
+      <div class="sec">1 · Movement</div>
+      <div class="ln"><b>DRAG</b><span>Drag from your sector to a linked sector. Roads only. Tap any sector to inspect its garrison.</span></div>
+      <div class="ln"><b>½ / ALL</b><span>Sets how much of the garrison marches. Every arm present is committed in proportion.</span></div>
+
+      <div class="sec">2 · Combined Arms</div>
+      <div class="ln"><b>MIXED</b><span>A sector holds infantry, armour and artillery together. Units keep their arm wherever they march — a tank battalion stays a tank battalion.</span></div>
+      <div class="ln"><b>OUTPUT</b><span>Each sector produces its own arm no matter who holds it. Take an artillery sector and it starts feeding guns into your stack.</span></div>
+      <div class="tri" style="margin-top:12px;">
+        INFANTRY &nbsp;▸&nbsp; beats ARMOUR<br>
+        ARMOUR &nbsp;&nbsp;&nbsp;▸&nbsp; beats ARTILLERY<br>
+        ARTILLERY ▸&nbsp; beats INFANTRY
+      </div>
+      <div class="ln" style="margin-top:12px;"><b>ODDS</b><span>Favourable ×1.5, unfavourable ×0.75, resolved arm against arm across the whole mix. A balanced stack is never badly countered. A pure stack hits far harder when it guesses right and collapses when it guesses wrong.</span></div>
+
+      <div class="sec">3 · Concentric Assault</div>
+      <div class="ln"><b>MASSING</b><span>Columns that reach the same sector within about two seconds of each other strike as one force, at the echelon of their combined strength. Three battalions landing together hit as a division.</span></div>
+      <div class="ln"><b>TIMING</b><span>Armour marches fastest, artillery slowest. Launch from your far sector first if you want them to arrive together.</span></div>
+      <div class="ln"><b>WHY</b><span>A dug-in defender beats attacks that arrive one at a time. Piecemeal attack is how armies lose.</span></div>
+
+      <div class="sec">4 · Echelon</div>
+      <div class="ln"><b>II · BN</b><span>Under 12 total. No bonus. Fast.</span></div>
+      <div class="ln"><b>III · REGT</b><span>12 to 35. ×1.2 in combat.</span></div>
+      <div class="ln"><b>XX · DIV</b><span>36 and up. ×1.45, but slow to march.</span></div>
+
+      <div class="sec">5 · Supply</div>
+      <div class="ln"><b>HQ</b><span>Each army has one headquarters, marked with a flag. Supply runs from HQ along roads through friendly sectors only.</span></div>
+      <div class="ln"><b>CUT OFF</b><span>An unsupplied sector is hatched in red. It produces nothing, loses entrenchment, fights at ×0.8 and bleeds strength until relieved or destroyed.</span></div>
+      <div class="ln"><b>WARNING</b><span>Emptying a rear sector can sever the whole front behind it. A raid deep into enemy ground cuts itself off the moment it lands.</span></div>
+      <div class="ln"><b>BREAKOUT</b><span>An encircled garrison can still attack, but only toward ground that would restore its supply.</span></div>
+      <div class="ln"><b>DISTANCE</b><span>Output falls the further a sector sits from its HQ, down to half. Sprawling conquests deliver less than a compact front.</span></div>
+      <div class="ln"><b>HQ LOST</b><span>If a headquarters falls, command displaces to that army's strongest surviving sector.</span></div>
+
+      <div class="sec">6 · Victory</div>
+      <div class="ln"><b>WIN</b><span>Hold every sector.</span></div>
+      <div class="ln"><b>LOSE</b><span>Hold none.</span></div>
+
+      <div class="row" style="margin:26px 0 10px;">
+        <button class="btn" id="closeRules">Return</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="result">
+    <div class="stamp" id="rstamp">After Action Report</div>
+    <h1 id="rtitle">Victory</h1>
+    <div class="sub" id="rsub"></div>
+    <div class="rule"></div>
+    <div class="row">
+      <button class="btn" id="again">Refight</button>
+      <button class="btn ghost" id="toTitle">Operations</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ==========================================================
+   FRONTLINE II
+   - garrisons are mixed stacks of INF / ARM / ART
+   - units keep their arm wherever they march
+   - sectors produce their own arm regardless of holder
+   - supply traced from HQ along roads through friendly ground
+   ========================================================== */
+
+const FD = 'ui-monospace,"SF Mono",Menlo,Consolas,monospace';
+const FL = '"Helvetica Neue",Helvetica,Arial,sans-serif';
+
+const C = {
+  board:"#D5CFB6", field:"#B4BC96", water:"#8FA6AB", woods:"#9AAB80",
+  ink:"#23211C", rule:"#8E8974", paper:"#E4DFC9", cut:"#9E2B1E",
+  side:["#7C7768","#2E5A78","#57604E","#8B3A2C"]
+};
+const SIDE_NAME = ["Unclaimed","Allied","Heeresgruppe B","Panzergruppe West"];
+
+const ARMS = ["INF","ARM","ART"];
+const ARM_NAME = {INF:"INFANTRY", ARM:"ARMOUR", ART:"ARTILLERY"};
+const BEATS = {INF:"ARM", ARM:"ART", ART:"INF"};
+function matchup(a,d){ return BEATS[a]===d ? 1.5 : (BEATS[d]===a ? 0.75 : 1.0); }
+
+const ECH = [
+  {mark:"II",  name:"BATTALION", bonus:1.00, speed:1.00, stack:1},
+  {mark:"III", name:"REGIMENT",  bonus:1.20, speed:0.82, stack:2},
+  {mark:"XX",  name:"DIVISION",  bonus:1.45, speed:0.66, stack:3}
+];
+function echIdx(s){ return s>=36 ? 2 : (s>=12 ? 1 : 0); }
+
+const ENT_MAX = 0.42;
+const CUT_ATTRITION_PCT = 0.030;
+const CUT_ATTRITION_FLAT = 0.16;
+const CUT_DEFENCE = 0.80;
+
+/* ---------- composition ---------- */
+function comp(i=0,a=0,r=0){ return {INF:i, ARM:a, ART:r}; }
+function tot(f){ return f.INF + f.ARM + f.ART; }
+function dom(f){ let b="INF"; for(const a of ARMS) if(f[a] > f[b]) b=a; return b; }
+function scaleTo(f, target){
+  const t = tot(f);
+  if(t <= 0) return comp();
+  const k = target/t;
+  return comp(f.INF*k, f.ARM*k, f.ART*k);
+}
+function addComp(f,g){ f.INF+=g.INF; f.ARM+=g.ARM; f.ART+=g.ART; }
+function mixMult(A,D){
+  const at=tot(A), dt=tot(D);
+  if(at<=0.001 || dt<=0.001) return 1;
+  let s=0;
+  for(const a of ARMS){ if(A[a]<=0) continue;
+    for(const d of ARMS){ if(D[d]<=0) continue;
+      s += (A[a]/at)*(D[d]/dt)*matchup(a,d);
+    }
+  }
+  return s;
+}
+
+/* ---------- scenarios ---------- */
+const SCENARIOS = [
+{
+  code:"I", diff:"MODERATE", name:"Beachhead", sub:"Normandy · 6 June", ai:{gap:2.1, edge:1.38},
+  enemies:[2], hq:{1:0, 2:10},
+  n:[
+    [.20,.87,"INF",1,31,50,1.15],[.53,.92,"ARM",1,20,38,0.92],[.82,.85,"INF",0,8,30,0.75],
+    [.31,.70,"ART",0,10,32,0.80],[.67,.70,"INF",0,8,30,0.75],
+    [.15,.52,"ARM",0,12,34,0.85],[.50,.50,"ART",0,16,46,1.05],[.85,.52,"INF",0,10,30,0.75],
+    [.29,.30,"ARM",2,15,34,0.90],[.71,.29,"INF",2,15,34,0.90],[.50,.12,"ART",2,19,42,1.02]
+  ],
+  l:[[0,1],[1,2],[0,3],[1,3],[1,4],[2,4],[3,5],[3,6],[4,6],[4,7],[5,6],[6,7],[5,8],[6,8],[6,9],[7,9],[8,10],[9,10],[8,9]]
+},
+{
+  code:"II", diff:"INTRODUCTORY", name:"Bagration", sub:"Byelorussia · 22 June", ai:{gap:1.62, edge:1.11},
+  enemies:[2,3], hq:{1:0, 2:14, 3:13},
+  n:[
+    [.50,.93,"ARM",1,26,46,1.10],[.20,.83,"INF",1,14,32,0.80],[.80,.83,"ART",1,12,32,0.80],
+    [.36,.70,"INF",0,10,30,0.75],[.64,.70,"ARM",0,10,30,0.75],
+    [.13,.60,"ART",0,12,30,0.72],[.87,.60,"INF",0,12,30,0.72],
+    [.50,.55,"ART",0,20,50,1.15],
+    [.27,.42,"INF",0,12,32,0.78],[.73,.42,"ARM",0,12,32,0.78],
+    [.14,.26,"ARM",2,21,41,1.02],[.42,.22,"INF",2,21,41,1.02],
+    [.62,.22,"ART",3,21,41,1.02],[.86,.26,"INF",3,21,41,1.02],
+    [.50,.08,"ARM",2,23,45,1.08]
+  ],
+  l:[[0,1],[0,2],[0,3],[0,4],[1,3],[1,5],[2,4],[2,6],[3,7],[4,7],[5,8],[6,9],[7,8],[7,9],[8,10],[8,11],[9,12],[9,13],[10,11],[11,12],[12,13],[11,14],[12,14],[10,14],[13,14]]
+},
+{
+  code:"III", diff:"SEVERE", name:"The Bulge", sub:"Ardennes · 16 December", ai:{gap:1.5, edge:1.18},
+  enemies:[2,3], hq:{1:0, 2:16, 3:15},
+  n:[
+    [.50,.94,"ART",1,20,44,1.00],[.22,.86,"INF",1,10,28,0.72],[.78,.86,"ARM",1,10,28,0.72],
+    [.10,.70,"ARM",0,10,28,0.70],[.36,.72,"INF",0,9,28,0.70],
+    [.64,.72,"ART",0,9,28,0.70],[.90,.70,"INF",0,10,28,0.70],
+    [.24,.56,"ART",0,14,34,0.82],[.50,.58,"INF",0,18,48,1.10],[.76,.56,"ARM",0,14,34,0.82],
+    [.12,.40,"INF",2,16,34,0.85],[.38,.38,"ARM",2,22,42,1.05],
+    [.62,.38,"INF",3,22,42,1.05],[.88,.40,"ART",3,16,34,0.85],
+    [.30,.18,"ART",2,24,46,1.10],[.70,.18,"ARM",3,24,46,1.10],[.50,.06,"INF",2,20,40,1.00]
+  ],
+  l:[[0,1],[0,2],[0,4],[0,5],[1,3],[1,4],[2,5],[2,6],[3,7],[4,7],[4,8],[5,8],[5,9],[6,9],[7,8],[8,9],
+     [7,10],[7,11],[8,11],[8,12],[9,12],[9,13],[10,11],[11,12],[12,13],[10,14],[11,14],[12,15],[13,15],
+     [14,15],[14,16],[15,16]]
+},
+];
+
+/* ---------- canvas ---------- */
+const wrap = document.getElementById("wrap");
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+let W=0,H=0,DPR=1, terrainDirty=true, terrainCv=null;
+let G=null, orderFull=false;
+
+function resize(){
+  DPR = Math.min(window.devicePixelRatio||1, 3);
+  W = wrap.clientWidth; H = wrap.clientHeight;
+  cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
+  cv.style.width = W+"px"; cv.style.height = H+"px";
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  layout(); terrainDirty = true;
+}
+window.addEventListener("resize", resize);
+
+function layout(){
+  if(!G) return;
+  const padX=26, padTop=78, padBot=112;
+  const x0=padX, y0=padTop, w=W-padX*2, h=H-padTop-padBot;
+  for(const n of G.nodes){ n.x = x0 + n.nx*w; n.y = y0 + n.ny*h; }
+  G.scale = Math.max(0.70, Math.min(1.0, Math.min(w/360, h/580)));
+}
+
+function startScenario(i){
+  const S = SCENARIOS[i];
+  const nodes = S.n.map((d,idx)=>{
+    const f = comp(); f[d[2]] = d[4];
+    return {
+      id:idx, nx:d[0], ny:d[1], arm:d[2], owner:d[3], f,
+      cap:d[5], rate:d[6], ent:d[3]?0.22:ENT_MAX,
+      hq:false, sup:true, x:0,y:0, pulse:0, flash:0, flashTxt:"",
+      lastEch:echIdx(d[4]), cutT:0
+    };
+  });
+  for(const k in S.hq) nodes[S.hq[k]].hq = true;
+  G = { idx:i, sc:S, nodes, links:S.l, cols:[], fx:[], crt:null, notes:[],
+        sel:null, drag:null, t:0, over:false, scale:1,
+        ai:S.enemies.map(f=>({f, timer:Math.random()*1.2})) };
+  G.adj = nodes.map(()=>[]);
+  for(const [a,b] of S.l){ G.adj[a].push(b); G.adj[b].push(a); }
+  layout(); terrainDirty = true;
+  computeSupply();
+  show(null);
+  refreshPanel();
+}
+
+/* ---------- supply ---------- */
+function hqOf(f){ return G.nodes.find(n=>n.hq && n.owner===f) || null; }
+// Output falls off with distance from headquarters. This is what stops a runaway
+// leader compounding without limit: the further the front runs from HQ, the less
+// each captured sector actually delivers.
+function supplyFactor(d){ return Math.max(0.50, 1/(1 + 0.13*d)); }
+
+function computeSupply(){
+  for(const n of G.nodes){ n.sup = (n.owner===0); n.depth = 0; }
+  const factions = [1, ...G.sc.enemies];
+  for(const f of factions){
+    let hq = hqOf(f);
+    if(!hq){
+      let best=null;
+      for(const n of G.nodes) if(n.owner===f && (!best || tot(n.f)>tot(best.f))) best=n;
+      if(best){ best.hq = true; hq = best; note(best, "HQ DISPLACED"); }
+    }
+    if(!hq) continue;
+    const seen = new Set([hq.id]); const q=[hq.id];
+    hq.depth = 0;
+    while(q.length){
+      const cur = q.shift();
+      G.nodes[cur].sup = true;
+      for(const j of G.adj[cur]){
+        if(!seen.has(j) && G.nodes[j].owner===f){
+          seen.add(j); G.nodes[j].depth = G.nodes[cur].depth + 1; q.push(j);
+        }
+      }
+    }
+  }
+}
+function note(n, txt){ G.notes.push({x:n.x, y:n.y, txt, t:0}); }
+
+/* ---------- orders ---------- */
+function march(from, to, frac){
+  const n = G.nodes[from];
+  const send = comp();
+  for(const a of ARMS) send[a] = Math.floor(n.f[a]*frac*10)/10;
+  if(tot(send) < 1) return false;
+  for(const a of ARMS) n.f[a] -= send[a];
+  n.ent *= 0.6;
+  const A=G.nodes[from], B=G.nodes[to];
+  const dist = Math.hypot(B.x-A.x, B.y-A.y);
+  const e = echIdx(tot(send));
+  const spd = send.ART>0 ? 0.85 : (send.ARM>=send.INF ? 1.25 : 1.0);
+  G.cols.push({owner:n.owner, f:send, from, to, t:0,
+               dur: Math.max(0.4, dist / (78*ECH[e].speed*spd)), ech:e});
+  n.pulse = 1;
+  computeSupply();
+  return true;
+}
+
+function resolve(owner, A, t){
+  if(t.owner === owner){
+    addComp(t.f, A);
+    if(tot(t.f) > t.cap*2.4) t.f = scaleTo(t.f, t.cap*2.4);
+    bump(t); computeSupply(); return;
+  }
+  const D=t.f;
+  // an assault that lands together fights as one formation, at its combined echelon
+  const aMul = ECH[echIdx(tot(A))].bonus * mixMult(A,D);
+  const dMul = ECH[echIdx(tot(D))].bonus * (1+t.ent) * (t.sup?1:CUT_DEFENCE) * mixMult(D,A);
+  const atk = tot(A)*aMul, def = tot(D)*dMul;
+  const odds = def<=0.01 ? 99 : atk/def;
+  if(owner===1 || t.owner===1) showCRT(t, odds, atk>def);
+
+  if(atk > def){
+    t.owner = owner;
+    t.f = scaleTo(A, Math.max(1, (atk-def)/aMul));
+    t.ent = 0;
+    burst(t.x, t.y, C.side[owner], 16);
+  } else {
+    t.f = scaleTo(D, Math.max(0, (def-atk)/dMul));
+    burst(t.x, t.y, C.side[t.owner], 10);
+  }
+  bump(t); computeSupply();
+}
+function bump(n){
+  n.pulse=1;
+  const e=echIdx(tot(n.f));
+  if(e>n.lastEch){ n.flash=1.5; n.flashTxt=ECH[e].name+" FORMED"; }
+  n.lastEch=e;
+}
+function showCRT(node, odds, won){
+  let txt;
+  if(odds>=1){ txt = (odds>=9.5?"9+":odds.toFixed(odds<3?1:0)) + " : 1"; }
+  else { const v=1/odds; txt = "1 : " + (v>=9.5?"9+":v.toFixed(v<3?1:0)); }
+  G.crt = {x:node.x, y:node.y, t:0, txt, won, verdict: won?"SECTOR TAKEN":"ATTACK REPULSED"};
+}
+function burst(x,y,col,n){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2, s=26+Math.random()*70;
+    G.fx.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,t:0,life:.45+Math.random()*.35,col});
+  }
+}
+
+// Columns that reach a sector hold for up to 1.5s so that a converging attack
+// lands as one blow. Three battalions arriving together fight as a division.
+function resolveArrivals(){
+  for(const n of G.nodes){
+    const groups = {};
+    for(const c of G.cols){
+      if(c.wait == null || c.to !== n.id) continue;
+      if(!groups[c.owner]) groups[c.owner] = [];
+      groups[c.owner].push(c);
+    }
+    for(const key in groups){
+      const grp = groups[key], owner = +key;
+      let held = 0;
+      for(const c of grp) if(c.wait > held) held = c.wait;
+      let imminent = false;
+      for(const c of G.cols){
+        if(c.wait == null && c.to === n.id && c.owner === owner && (1-c.t)*c.dur < 2.0){ imminent = true; break; }
+      }
+      if(imminent && held < 3.0) continue;      // wait for the stragglers
+
+      const merged = comp();
+      for(const c of grp) addComp(merged, c.f);
+      if(grp.length > 1 && n.owner !== owner) note(n, "CONCENTRIC ASSAULT");
+      resolve(owner, merged, n);
+      for(const c of grp){ const i = G.cols.indexOf(c); if(i>=0) G.cols.splice(i,1); }
+    }
+  }
+}
+
+/* ---------- AI ---------- */
+function inboundMap(){
+  const m = G.nodes.map(()=>({}));
+  for(const c of G.cols){
+    if((1-c.t)*c.dur > 6) continue;
+    m[c.to][c.owner] = (m[c.to][c.owner]||0) + tot(c.f);
+  }
+  return m;
+}
+function hostileInbound(m, node, f){
+  let s=0; for(const k in m[node.id]) if(+k!==f) s += m[node.id][k];
+  return s;
+}
+function factionTotal(f){
+  let s=0;
+  for(const n of G.nodes) if(n.owner===f) s+=tot(n.f);
+  for(const c of G.cols) if(c.owner===f) s+=tot(c.f);
+  return s;
+}
+// an army that already has the upper hand presses harder
+function aiEdge(f){
+  const mine = factionTotal(f);
+  let other = 0;
+  for(const g of [1, ...G.sc.enemies]) if(g!==f) other = Math.max(other, factionTotal(g));
+  const base = G.sc.ai.edge;
+  if(mine > other*2.2)  return 0.80;                 // press a beaten enemy rather than stall
+  if(mine > other*1.5)  return Math.max(0.92, base - 0.20);
+  if(mine > other*1.15) return Math.max(0.98, base - 0.10);
+  return base;
+}
+
+// Look for a target that several sectors could storm together. Without this the AI
+// can only reinforce an assault already under way, so no assault ever begins.
+function aiPlanAssault(f, used){
+  const edge = aiEdge(f);
+  const inb = inboundMap();
+  let best = null;
+  for(const t of G.nodes){
+    if(t.owner === f) continue;
+    const srcs = [];
+    for(const k of G.adj[t.id]){
+      const n = G.nodes[k];
+      if(n.owner!==f || used.has(k) || !n.sup) continue;
+      if(n.hq && tot(n.f) < 14) continue;
+      if(hostileInbound(inb, n, f) > tot(n.f)*0.55) continue;
+      if(tot(n.f) < 6) continue;
+      srcs.push(n);
+    }
+    if(srcs.length < 2) continue;
+    const merged = comp();
+    for(const n of srcs) for(const a of ARMS) merged[a] += n.f[a]*0.8;
+    const sStr = tot(merged);
+    if(sStr < 8) continue;
+    const aMul = ECH[echIdx(sStr)].bonus * mixMult(merged, t.f);
+    const dMul = ECH[echIdx(tot(t.f))].bonus * (1+t.ent) * (t.sup?1:CUT_DEFENCE) * mixMult(t.f, merged);
+    if(sStr*aMul > tot(t.f)*dMul*edge){
+      let score = 30 + t.rate*6 + srcs.length*2;
+      if(t.hq) score += 18;
+      if(t.owner === 0) score += 4;
+      if(!best || score > best.s) best = {s:score, t:t.id, srcs:srcs.map(n=>n.id)};
+    }
+  }
+  return best;
+}
+
+function aiTurn(brain, dt){
+  brain.timer -= dt;
+  if(brain.timer > 0) return;
+  brain.timer = G.sc.ai.gap * (0.72 + Math.random()*0.56);
+  const f = brain.f;
+  // several orders at once, so an assault can be massed instead of trickled in
+  let owned = 0; for(const n of G.nodes) if(n.owner===f) owned++;
+  const budget = 1 + Math.floor(owned/4);
+  const used = new Set();
+
+  const assault = aiPlanAssault(f, used);
+  if(assault){
+    for(const a of assault.srcs){ used.add(a); march(a, assault.t, 0.8); }
+  }
+
+  for(let k=0;k<budget;k++){
+    const mv = aiBestMove(f, used);
+    if(!mv) break;
+    used.add(mv.a);
+    march(mv.a, mv.b, mv.frac);
+  }
+}
+
+function aiBestMove(f, used){
+  const edge = aiEdge(f);
+  const inb = inboundMap();
+  let best = null;
+
+  for(const n of G.nodes){
+    if(n.owner!==f || used.has(n.id)) continue;
+    const nStr = tot(n.f);
+    if(nStr < 6) continue;
+
+    const threatHere = hostileInbound(inb, n, f);
+    if(threatHere > nStr*0.55) continue;        // do not strip a sector about to be hit
+    if(n.hq && nStr < 14) continue;             // keep a floor on the headquarters
+    const breakout = !n.sup;                    // encircled troops may only fight outward
+
+    for(const j of G.adj[n.id]){
+      const t = G.nodes[j];
+      if(breakout && !G.adj[j].some(k=>G.nodes[k].owner===f && G.nodes[k].sup)) continue;
+
+      for(const frac of [0.5, 0.8]){
+        const send = comp();
+        for(const a of ARMS) send[a] = n.f[a]*frac;
+        const sStr = tot(send);
+        if(sStr < 4) continue;
+        let score = -1;
+
+        if(t.owner === f){
+          const th = hostileInbound(inb, t, f);
+          const need = th > tot(t.f)*0.8;
+          const front = G.adj[j].some(k=>G.nodes[k].owner!==f);
+          const rear  = !G.adj[n.id].some(k=>G.nodes[k].owner!==f);
+          if(need) score = 22 + (th - tot(t.f))*0.3;
+          else if(!t.sup) score = 16;
+          else if(front && rear && nStr > tot(t.f)+8) score = 5 + (nStr-tot(t.f))*0.10;
+          if(frac>0.6 && !need) score -= 3;
+        } else {
+          const friendlyIn = inb[j][t.owner]||0;
+          const mineIn = inb[j][f]||0;
+          const projD = tot(t.f) + friendlyIn;
+          const aMul = ECH[echIdx(sStr)].bonus * mixMult(send, t.f);
+          const dMul = ECH[echIdx(projD)].bonus * (1+t.ent) * (t.sup?1:CUT_DEFENCE) * mixMult(t.f, send);
+          const atk = (sStr + mineIn)*aMul, def = projD*dMul;
+          if(atk > def*edge){
+            score = 12 + t.rate*6*supplyFactor(n.depth+1) + G.adj[j].length*1.1 - projD*0.05;
+            if(t.owner===0) score += 5;
+            if(t.hq) score += 14;
+            if(!t.sup) score += 6;
+            if(mixMult(send,t.f) > 1.1) score += 5;
+            if(mineIn > 0) score += 10;                 // pile onto an assault already under way
+            let hostileNbrs=0, myNbrs=0;
+            for(const k of G.adj[j]){
+              if(G.nodes[k].owner===f) myNbrs++;
+              else if(G.nodes[k].owner!==0) hostileNbrs++;
+            }
+            score -= hostileNbrs*2.2;
+            if(myNbrs===0) score -= 8;                  // would land out of supply
+            if(frac>0.6){ score += 3; score -= threatHere*0.2; }
+          }
+        }
+        if(score > 0 && (!best || score > best.s)) best = {s:score, a:n.id, b:j, frac};
+      }
+    }
+  }
+  return best;
+}
+
+/* ---------- input ---------- */
+function nodeAt(px,py){
+  const r = 32*G.scale; let hit=null, bd=1e9;
+  for(const n of G.nodes){
+    const d = Math.hypot(px-n.x, py-n.y);
+    if(d < r*1.35 && d < bd){ bd=d; hit=n; }
+  }
+  return hit;
+}
+function pt(e){ const r=cv.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top}; }
+
+cv.addEventListener("pointerdown", e=>{
+  if(!G || G.over) return;
+  const p=pt(e), n=nodeAt(p.x,p.y);
+  if(n && n.owner===1 && tot(n.f)>=2){ G.drag={from:n.id,x:p.x,y:p.y,over:null}; G.sel=n.id; }
+  else if(G.sel!=null && n && G.adj[G.sel].indexOf(n.id)>=0 && G.nodes[G.sel].owner===1){
+    march(G.sel, n.id, orderFull?0.98:0.5); G.sel=n.id;
+  }
+  else G.sel = n ? n.id : null;
+  refreshPanel();
+});
+cv.addEventListener("pointermove", e=>{
+  if(!G || !G.drag) return;
+  const p=pt(e); G.drag.x=p.x; G.drag.y=p.y;
+  const n=nodeAt(p.x,p.y);
+  G.drag.over = (n && n.id!==G.drag.from && G.adj[G.drag.from].indexOf(n.id)>=0) ? n.id : null;
+});
+function endDrag(){
+  if(!G || !G.drag) return;
+  if(G.drag.over!=null) march(G.drag.from, G.drag.over, orderFull?0.98:0.5);
+  G.drag=null; refreshPanel();
+}
+cv.addEventListener("pointerup", endDrag);
+cv.addEventListener("pointercancel", endDrag);
+
+/* ---------- update ---------- */
+function update(dt){
+  if(!G || G.over) return;
+  G.t += dt;
+  let changed = false;
+
+  for(const n of G.nodes){
+    const T = tot(n.f);
+    if(n.owner!==0 && n.sup){
+      if(T < n.cap) n.f[n.arm] += n.rate*supplyFactor(n.depth)*dt*0.5;
+      else if(T > n.cap) n.f = scaleTo(n.f, Math.max(n.cap, T - dt*1.2));
+      n.ent = Math.min(ENT_MAX, n.ent + dt*0.024);
+    } else if(n.owner!==0 && !n.sup){
+      n.cutT += dt;
+      n.ent = Math.max(0, n.ent - dt*0.10);
+      const loss = T*CUT_ATTRITION_PCT*dt + CUT_ATTRITION_FLAT*dt;
+      n.f = scaleTo(n.f, Math.max(0, T - loss));
+      if(tot(n.f) < 0.8){
+        n.owner = 0; n.f = comp(); n.f[n.arm] = 1; n.ent = 0.15;
+        n.hq = false; note(n, "POCKET DESTROYED"); changed = true;
+      }
+    } else { n.cutT = 0; }
+    n.pulse = Math.max(0, n.pulse - dt*2.6);
+    n.flash = Math.max(0, n.flash - dt);
+    const e = echIdx(tot(n.f));
+    if(e>n.lastEch){ n.flash=1.5; n.flashTxt=ECH[e].name+" FORMED"; }
+    n.lastEch=e;
+  }
+  if(changed) computeSupply();
+
+  for(const c of G.cols){
+    if(c.wait != null){ c.wait += dt; continue; }
+    c.t += dt/c.dur;
+    if(c.t >= 1){ c.t = 1; c.wait = 0; }
+  }
+  resolveArrivals();
+  for(const b of G.ai) aiTurn(b, dt);
+
+  for(let i=G.fx.length-1;i>=0;i--){
+    const p=G.fx[i]; p.t+=dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=90*dt;
+    if(p.t>p.life) G.fx.splice(i,1);
+  }
+  for(let i=G.notes.length-1;i>=0;i--){ G.notes[i].t+=dt; if(G.notes[i].t>2) G.notes.splice(i,1); }
+  if(G.crt){ G.crt.t += dt; if(G.crt.t>1.7) G.crt=null; }
+
+  const alive = f => G.nodes.some(n=>n.owner===f) || G.cols.some(c=>c.owner===f);
+  if(!G.sc.enemies.some(alive)) finish(true);
+  else if(!alive(1)) finish(false);
+
+  drawBar();
+  if(G.t % 0.35 < dt) refreshPanel();
+}
+
+/* ---------- terrain ---------- */
+function buildTerrain(){
+  terrainCv = document.createElement("canvas");
+  terrainCv.width = Math.round(W*DPR); terrainCv.height = Math.round(H*DPR);
+  const g = terrainCv.getContext("2d");
+  g.setTransform(DPR,0,0,DPR,0,0);
+  g.fillStyle = C.board; g.fillRect(0,0,W,H);
+
+  let seed = 1337 + G.idx*97;
+  const rnd = ()=> (seed = (seed*1664525+1013904223)&0x7fffffff)/0x7fffffff;
+
+  g.globalAlpha = .5;
+  for(let i=0;i<7;i++){
+    g.fillStyle = i%3===0 ? C.woods : C.field;
+    g.beginPath();
+    const cx=rnd()*W, cy=rnd()*H, rr=60+rnd()*130;
+    for(let a=0;a<=12;a++){
+      const th=a/12*Math.PI*2, r=rr*(0.62+rnd()*0.55);
+      const x=cx+Math.cos(th)*r, y=cy+Math.sin(th)*r*0.7;
+      a?g.lineTo(x,y):g.moveTo(x,y);
+    }
+    g.closePath(); g.fill();
+  }
+  g.globalAlpha=.75;
+  g.strokeStyle=C.water; g.lineWidth=9; g.lineCap="round"; g.lineJoin="round";
+  g.beginPath();
+  let rx=-20, ry=H*(0.30+rnd()*0.4); g.moveTo(rx,ry);
+  while(rx < W+30){ rx += 40+rnd()*40; ry += (rnd()-0.5)*70; g.lineTo(rx,ry); }
+  g.stroke();
+  g.globalAlpha=1;
+
+  const s=26, hw=s*Math.sqrt(3)/2;
+  g.strokeStyle=C.rule; g.globalAlpha=.28; g.lineWidth=1;
+  for(let col=-1; col*hw*2 < W+60; col++){
+    for(let row=-1; row*s*1.5 < H+60; row++){
+      const cx=col*hw*2+(row%2?hw:0), cy=row*s*1.5;
+      g.beginPath();
+      for(let k=0;k<6;k++){
+        const a=Math.PI/180*(60*k-90);
+        const x=cx+Math.cos(a)*s, y=cy+Math.sin(a)*s;
+        k?g.lineTo(x,y):g.moveTo(x,y);
+      }
+      g.closePath(); g.stroke();
+    }
+  }
+  g.globalAlpha=.05;
+  for(let i=0;i<1400;i++){
+    g.fillStyle = i%2 ? "#000" : "#fff";
+    g.fillRect(Math.random()*W, Math.random()*H, 1.4, 1.4);
+  }
+  g.globalAlpha=1;
+  terrainDirty=false;
+}
+
+/* ---------- counters ---------- */
+function armSymbol(g,x,y,w,h,arm,col,lw){
+  g.strokeStyle=col; g.lineWidth=lw||Math.max(1.3,w*0.055); g.lineJoin="miter";
+  g.strokeRect(x-w/2,y-h/2,w,h);
+  g.beginPath();
+  if(arm==="INF"){
+    g.moveTo(x-w/2,y-h/2); g.lineTo(x+w/2,y+h/2);
+    g.moveTo(x+w/2,y-h/2); g.lineTo(x-w/2,y+h/2);
+    g.stroke();
+  } else if(arm==="ARM"){
+    g.ellipse(x,y,w*0.30,h*0.32,0,0,Math.PI*2); g.stroke();
+  } else {
+    g.arc(x,y,Math.min(w,h)*0.19,0,Math.PI*2); g.fillStyle=col; g.fill();
+  }
+}
+const MIXSHADE = {INF:"rgba(228,223,201,0.95)", ARM:"rgba(228,223,201,0.58)", ART:"rgba(228,223,201,0.28)"};
+
+function drawCounter(g,n){
+  const S=G.scale, T=tot(n.f);
+  const size = (n.cap>40 ? 50 : 45)*S, half=size/2;
+  const col = C.side[n.owner];
+  const e = echIdx(T), stack = ECH[e].stack;
+
+  g.save();
+  g.translate(n.x,n.y);
+  const pop = 1 + n.pulse*0.06; g.scale(pop,pop);
+
+  for(let i=stack-1;i>=1;i--){
+    const o=i*3.2*S;
+    g.fillStyle="rgba(20,18,14,0.20)"; g.fillRect(-half+o+1.5,-half-o+1.5,size,size);
+    g.fillStyle=col; g.fillRect(-half+o,-half-o,size,size);
+    g.strokeStyle=C.ink; g.lineWidth=1.4; g.strokeRect(-half+o,-half-o,size,size);
+  }
+  g.fillStyle="rgba(20,18,14,0.26)"; g.fillRect(-half+2,-half+2.4,size,size);
+  g.fillStyle=col; g.fillRect(-half,-half,size,size);
+
+  if(n.owner!==0 && !n.sup){
+    g.save();
+    g.beginPath(); g.rect(-half,-half,size,size); g.clip();
+    g.strokeStyle=C.cut; g.lineWidth=2.2; g.globalAlpha=.75;
+    for(let k=-size; k<size*2; k+=7*S){
+      g.beginPath(); g.moveTo(-half+k,-half); g.lineTo(-half+k-size,half); g.stroke();
+    }
+    g.restore();
+  }
+
+  const isSel = (G.sel===n.id)||(G.drag&&G.drag.over===n.id);
+  g.strokeStyle = isSel ? C.paper : ((n.owner!==0&&!n.sup) ? C.cut : C.ink);
+  g.lineWidth = isSel ? 2.8 : ((n.owner!==0&&!n.sup) ? 2.4 : 1.6);
+  g.strokeRect(-half,-half,size,size);
+
+  g.fillStyle=C.paper; g.textAlign="center"; g.textBaseline="middle";
+  g.font = `700 ${Math.round(9.5*S)}px ${FD}`;
+  g.fillText(ECH[e].mark, 0, -half+7.5*S);
+
+  if(n.hq){
+    g.fillStyle=C.paper;
+    g.fillRect(-half+3.5*S, -half+3*S, 1.6*S, 9*S);
+    g.beginPath();
+    g.moveTo(-half+5.1*S, -half+3*S);
+    g.lineTo(-half+11*S, -half+5.2*S);
+    g.lineTo(-half+5.1*S, -half+7.4*S);
+    g.closePath(); g.fill();
+  }
+
+  armSymbol(g, 0, -1.5*S, size*0.48, size*0.30, dom(n.f), C.paper, Math.max(1.3,size*0.030));
+
+  if(T > 0.5){
+    const bw=size*0.60, bh=3.4*S, bx=-bw/2, by=7.5*S;
+    let cx=bx;
+    for(const a of ARMS){
+      const w = bw*(n.f[a]/T);
+      if(w>0.4){ g.fillStyle=MIXSHADE[a]; g.fillRect(cx,by,w,bh); }
+      cx+=w;
+    }
+    g.strokeStyle="rgba(35,33,28,0.55)"; g.lineWidth=1; g.strokeRect(bx,by,bw,bh);
+  }
+
+  g.font = `700 ${Math.round(12.5*S)}px ${FD}`;
+  g.textAlign="right"; g.textBaseline="alphabetic"; g.fillStyle=C.paper;
+  g.fillText(String(Math.floor(T)), half-4*S, half-4.5*S);
+
+  if(n.owner!==0){
+    const ticks=Math.round(n.ent/ENT_MAX*4);
+    for(let i=0;i<4;i++){
+      g.fillStyle = i<ticks ? C.paper : "rgba(228,223,201,0.24)";
+      g.fillRect(-half+4*S+i*4.2*S, half-8*S, 2.6*S, 4*S);
+    }
+  }
+
+  if(n.flash>0){
+    const a=Math.min(1,n.flash/1.5);
+    g.globalAlpha=a; g.fillStyle=C.paper; g.textAlign="center";
+    g.font=`700 ${Math.round(9*S)}px ${FL}`;
+    g.fillText(n.flashTxt||"", 0, -half-9*S);
+    g.globalAlpha=1;
+  }
+  g.restore();
+}
+
+/* ---------- render ---------- */
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  if(!G) return;
+  if(terrainDirty || !terrainCv) buildTerrain();
+  ctx.drawImage(terrainCv,0,0,W,H);
+
+  ctx.lineCap="round";
+  for(const [a,b] of G.links){
+    const A=G.nodes[a], B=G.nodes[b];
+    ctx.strokeStyle="rgba(35,33,28,0.30)"; ctx.lineWidth=4.5; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
+    const live = (A.owner!==0 && A.owner===B.owner && A.sup && B.sup);
+    ctx.strokeStyle = live ? "rgba(228,223,201,0.72)" : "rgba(228,223,201,0.38)";
+    ctx.lineWidth = live ? 2.4 : 1.8;
+    ctx.setLineDash(live ? [] : [7,6]);
+    ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  const src = G.drag ? G.drag.from : (G.sel!=null && G.nodes[G.sel].owner===1 ? G.sel : null);
+  if(src!=null){
+    for(const j of G.adj[src]){
+      const t=G.nodes[j];
+      ctx.strokeStyle=C.paper; ctx.globalAlpha=.5; ctx.lineWidth=2; ctx.setLineDash([4,5]);
+      ctx.beginPath(); ctx.arc(t.x,t.y,32*G.scale,0,Math.PI*2); ctx.stroke();
+      ctx.globalAlpha=1; ctx.setLineDash([]);
+    }
+  }
+
+  for(const c of G.cols){
+    const A=G.nodes[c.from], B=G.nodes[c.to];
+    const held = c.wait != null;
+    const tt = held ? 0.88 : c.t;
+    const x=A.x+(B.x-A.x)*tt, y=A.y+(B.y-A.y)*tt;
+    const ang=Math.atan2(B.y-A.y,B.x-A.x);
+    const S=G.scale, w=19*S, h=13*S;
+    ctx.save(); ctx.translate(x,y);
+    ctx.globalAlpha=.35;
+    for(let i=1;i<=ECH[c.ech].stack;i++){
+      ctx.fillStyle=C.side[c.owner];
+      ctx.fillRect(-Math.cos(ang)*i*7*S-w/2, -Math.sin(ang)*i*7*S-h/2, w, h);
+    }
+    ctx.globalAlpha=1;
+    ctx.fillStyle="rgba(20,18,14,0.28)"; ctx.fillRect(-w/2+1.5,-h/2+1.8,w,h);
+    ctx.fillStyle=C.side[c.owner]; ctx.fillRect(-w/2,-h/2,w,h);
+    ctx.strokeStyle=C.ink; ctx.lineWidth=1.2; ctx.strokeRect(-w/2,-h/2,w,h);
+    armSymbol(ctx, -w*0.24, 0, w*0.34, h*0.44, dom(c.f), C.paper, 1.1);
+    ctx.fillStyle=C.paper; ctx.font=`700 ${Math.round(8.5*S)}px ${FD}`;
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(String(Math.floor(tot(c.f))), w*0.22, 0.5);
+    ctx.restore();
+  }
+
+  for(const n of G.nodes) drawCounter(ctx,n);
+
+  if(G.drag){
+    const A=G.nodes[G.drag.from];
+    ctx.strokeStyle = G.drag.over!=null ? C.paper : "rgba(228,223,201,0.5)";
+    ctx.lineWidth=3; ctx.setLineDash([9,7]);
+    ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(G.drag.x,G.drag.y); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  for(const p of G.fx){
+    ctx.globalAlpha=Math.max(0,1-p.t/p.life);
+    ctx.fillStyle=p.col; ctx.fillRect(p.x-2,p.y-2,4,4);
+  }
+  ctx.globalAlpha=1;
+
+  for(const nt of G.notes){
+    const a = nt.t<0.15 ? nt.t/0.15 : Math.max(0,(2-nt.t)/0.6);
+    ctx.globalAlpha=Math.min(1,a);
+    ctx.fillStyle=C.cut; ctx.font=`700 10px ${FL}`; ctx.textAlign="center";
+    ctx.fillText(nt.txt, nt.x, nt.y - 40 - nt.t*10);
+    ctx.globalAlpha=1;
+  }
+
+  if(G.crt){
+    const k=G.crt.t;
+    const a = k<0.12 ? k/0.12 : (k>1.35 ? Math.max(0,(1.7-k)/0.35) : 1);
+    ctx.save(); ctx.globalAlpha=a;
+    ctx.translate(G.crt.x, G.crt.y - 50*G.scale - Math.min(1,k/0.3)*22);
+    const bw=118,bh=42;
+    ctx.fillStyle=C.paper; ctx.fillRect(-bw/2,-bh/2,bw,bh);
+    ctx.strokeStyle=C.ink; ctx.lineWidth=2; ctx.strokeRect(-bw/2,-bh/2,bw,bh);
+    ctx.fillStyle=C.ink; ctx.fillRect(-bw/2,-bh/2,bw,14);
+    ctx.fillStyle=C.paper; ctx.font=`700 8px ${FD}`;
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText("COMBAT RESULTS",0,-bh/2+7);
+    ctx.fillStyle=C.ink; ctx.font=`700 17px ${FD}`;
+    ctx.fillText(G.crt.txt,0,-bh/2+25);
+    ctx.font=`700 7.5px ${FL}`;
+    ctx.fillStyle = G.crt.won ? C.side[1] : C.side[3];
+    ctx.fillText(G.crt.verdict,0,bh/2-7);
+    ctx.restore(); ctx.globalAlpha=1;
+  }
+}
+
+/* ---------- HUD + readout ---------- */
+const barEl=document.getElementById("bar"); let barCells={};
+function drawBar(){
+  const t=[0,0,0,0];
+  for(const n of G.nodes) t[n.owner]+=tot(n.f);
+  for(const c of G.cols) t[c.owner]+=tot(c.f);
+  const sum=t.reduce((a,b)=>a+b,0)||1;
+  for(let f=1;f<4;f++){
+    if(!barCells[f]){ const d=document.createElement("div"); d.style.background=C.side[f]; barEl.appendChild(d); barCells[f]=d; }
+    barCells[f].style.width=(t[f]/sum*100).toFixed(1)+"%";
+  }
+}
+
+const panel=document.getElementById("panel");
+const pname=document.getElementById("pname"), pstat=document.getElementById("pstat"), parms=document.getElementById("parms");
+const SYMCACHE = {};
+function symCanvas(arm, col){
+  const key = arm+col;
+  if(SYMCACHE[key]) return SYMCACHE[key];
+  const c=document.createElement("canvas"), s=2;
+  c.width=26*s; c.height=17*s; c.style.width="26px"; c.style.height="17px";
+  const g=c.getContext("2d"); g.setTransform(s,0,0,s,0,0);
+  armSymbol(g,13,8.5,22,13,arm,col,1.5);
+  SYMCACHE[key] = c;
+  return c;
+}
+function refreshPanel(){
+  if(!G){ panel.classList.remove("on"); return; }
+  panel.classList.add("on");
+  parms.innerHTML="";
+  const n = G.sel!=null ? G.nodes[G.sel] : null;
+
+  if(!n){
+    pname.textContent = "Arms of service";
+    pstat.textContent = "each beats the next";
+    pstat.style.color = C.rule;
+    for(const a of ARMS){
+      const d=document.createElement("div"); d.className="arm";
+      d.appendChild(symCanvas(a, C.ink));
+      const w=document.createElement("div");
+      w.innerHTML = `<div class="armv" style="font-size:11px;">${ARM_NAME[a]}</div>
+                     <div class="arml">beats ${ARM_NAME[BEATS[a]].slice(0,3)}</div>`;
+      d.appendChild(w); parms.appendChild(d);
+    }
+    return;
+  }
+
+  const T=tot(n.f), e=echIdx(T);
+  pname.textContent = `${SIDE_NAME[n.owner]} · ${ARM_NAME[n.arm].slice(0,3)} sector`;
+  const bits=[`${ECH[e].mark} ${ECH[e].name}`];
+  if(n.hq) bits.push("HQ");
+  if(n.owner!==0) bits.push(n.sup
+      ? `DUG IN ${Math.round(n.ent/ENT_MAX*100)}% · SUPPLY ${Math.round(supplyFactor(n.depth)*100)}%`
+      : "OUT OF SUPPLY");
+  pstat.textContent = bits.join(" · ");
+  pstat.style.color = (n.owner!==0 && !n.sup) ? C.cut : C.rule;
+
+  for(const a of ARMS){
+    const d=document.createElement("div"); d.className="arm"+(n.f[a]<0.5?" dim":"");
+    d.appendChild(symCanvas(a, C.ink));
+    const w=document.createElement("div");
+    w.innerHTML = `<div class="armv">${n.f[a].toFixed(n.f[a]<10?1:0)}</div>
+                   <div class="arml">${ARM_NAME[a]}</div>`;
+    d.appendChild(w); parms.appendChild(d);
+  }
+}
+
+/* ---------- loop / screens ---------- */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  update(dt); draw();
+  requestAnimationFrame(frame);
+}
+const screens={title:document.getElementById("title"),brief:document.getElementById("brief"),result:document.getElementById("result")};
+function show(name){
+  for(const k in screens) screens[k].classList.toggle("on", k===name);
+  document.getElementById("hud").style.display = name ? "none" : "flex";
+  panel.classList.toggle("on", !name);
+}
+function finish(won){
+  if(G.over) return;
+  G.over=true;
+  const m=Math.floor(G.t/60), s=Math.floor(G.t%60);
+  document.getElementById("rtitle").innerHTML = won ? "Objectives<br>secured" : "Position<br>overrun";
+  document.getElementById("rstamp").textContent = won ? "After Action Report · Success" : "After Action Report · Failure";
+  document.getElementById("rsub").textContent = `${G.sc.name} · ${m}m ${String(s).padStart(2,"0")}s elapsed`;
+  setTimeout(()=>show("result"), 900);
+}
+
+const oplist=document.getElementById("oplist");
+SCENARIOS.forEach((s,i)=>{
+  const b=document.createElement("button"); b.className="op";
+  b.innerHTML=`<span class="opn">${s.code}</span><span class="opb">
+    <span class="opt">${s.name}</span>
+    <span class="opd">${s.diff} · ${s.sub.toUpperCase()}<br>${s.n.length} SECTORS · ${s.enemies.length===1?"ONE":"TWO"} OPPONENT${s.enemies.length>1?"S":""}</span></span>`;
+  b.onclick=()=>startScenario(i);
+  oplist.appendChild(b);
+});
+document.getElementById("rules").onclick=()=>show("brief");
+document.getElementById("closeRules").onclick=()=>show("title");
+document.getElementById("again").onclick=()=>startScenario(G.idx);
+document.getElementById("toTitle").onclick=()=>{G=null;show("title");};
+document.getElementById("menu").onclick=()=>{G=null;show("title");};
+const orderBtn=document.getElementById("order");
+orderBtn.onclick=()=>{ orderFull=!orderFull; orderBtn.textContent=orderFull?"ALL":"½"; };
+
+resize(); show("title");
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
